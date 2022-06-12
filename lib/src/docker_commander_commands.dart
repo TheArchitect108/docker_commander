@@ -15,9 +15,12 @@ abstract class DockerCMDExecutor {
 
   /// Returns if [containerName] is running (checks at Docker Daemon).
   Future<bool> isContainerRunning(String containerName) async {
-    var runningContainers = await DockerCMD.psContainerNames(this);
-    if (runningContainers == null) return false;
-    return runningContainers.contains(containerName);
+    var runningContainers =
+        await DockerCMD.getContainerStatusByName(this, containerName);
+    if (!runningContainers!.contains(containerName)) {
+      return false;
+    }
+    return !runningContainers.contains("Exited (");
   }
 
   /// Executes a Docker [command] with [args]
@@ -169,6 +172,26 @@ abstract class DockerCMD {
 
     var id = stdout.asString.trim();
     return id;
+  }
+
+  /// Returns the container status by [name].
+  static Future<String?> getContainerStatusByName(
+      DockerCMDExecutor executor, String? name) async {
+    if (isEmptyString(name)) return null;
+
+    var process = await executor.command('ps', ['-af', 'name=$name']);
+    if (process == null) return null;
+
+    var ok = await process.waitExitAndConfirm(0);
+    if (!ok) return null;
+
+    var stdout = process.stdout!;
+    var dataOK = await stdout.waitForDataMatch(RegExp(r'\w+'),
+        timeout: executor.defaultOutputTime);
+    if (!dataOK) return null;
+
+    var output = stdout.asString.trim();
+    return output;
   }
 
   /// Returns the container ID by [name].

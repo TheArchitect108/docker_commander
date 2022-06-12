@@ -57,6 +57,8 @@ void main() {
 
       expect(dockerContainer.instanceID > 0, isTrue);
       expect(dockerContainer.name.isNotEmpty, isTrue);
+      expect(
+          await dockerCommander.isContainerRunning(dockerContainer.name), true);
 
       var output = dockerContainer.stdout!.asString;
       expect(
@@ -181,6 +183,8 @@ void main() {
       _log.info('exitCode: $exitCode');
 
       expect(exitCode == 0, isTrue);
+
+      dockerContainer.stop();
     });
 
     test('Apache Httpd', () async {
@@ -338,6 +342,9 @@ void main() {
 
       _log.info('Stopping Nginx...');
       await nginxContainer.stop(timeout: Duration(seconds: 5));
+
+      expect(
+          await dockerCommander.isContainerRunning(nginxContainer.name), false);
 
       _log.info('Wait exit...');
       var exitCode = await nginxContainer.waitExit();
